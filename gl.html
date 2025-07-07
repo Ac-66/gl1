@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>表格合并与可视化工具（李飘组专用）</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+body {
+  background: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #1d1d1f;
+  letter-spacing: 0.01em;
+}
+.container {
+  max-width: 900px;
+  margin-top: 48px;
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(60,60,60,0.08), 0 1.5px 4px rgba(60,60,60,0.04);
+  padding: 40px 32px 32px 32px;
+}
+h2, .h2 {
+  font-weight: 600;
+  font-size: 2.2rem;
+  letter-spacing: 0.01em;
+  margin-bottom: 32px;
+}
+.card, .table, .form-control, .form-select {
+  border-radius: 16px !important;
+  box-shadow: 0 1.5px 4px rgba(60,60,60,0.04);
+  border: 1px solid #e0e0e5 !important;
+}
+.card-header {
+  background: #fafafc;
+  font-weight: 500;
+  font-size: 1.1rem;
+  border-bottom: 1px solid #e0e0e5 !important;
+  border-radius: 16px 16px 0 0 !important;
+}
+.btn {
+  border-radius: 24px;
+  font-weight: 500;
+  font-size: 1.05rem;
+  padding: 0.5rem 1.5rem;
+  transition: box-shadow 0.2s, background 0.2s;
+  box-shadow: 0 1.5px 4px rgba(60,60,60,0.04);
+}
+.btn-primary, .btn-success {
+  background: linear-gradient(90deg, #0071e3 0%, #2997ff 100%);
+  border: none;
+}
+.btn-primary:hover, .btn-success:hover {
+  background: linear-gradient(90deg, #2997ff 0%, #0071e3 100%);
+  box-shadow: 0 4px 16px rgba(41,151,255,0.12);
+}
+.table {
+  background: #fafafc;
+  font-size: 1.01rem;
+}
+.table th, .table td {
+  border-color: #e0e0e5 !important;
+  padding: 0.6rem 0.8rem;
+  text-align: center;
+  vertical-align: middle;
+}
+input[type="file"] {
+  background: #f5f5f7;
+  border-radius: 12px;
+  padding: 0.5rem;
+}
+#chart {
+  background: #fafafc;
+  border-radius: 16px;
+  margin-top: 32px;
+  box-shadow: 0 1.5px 4px rgba(60,60,60,0.04);
+}
+::-webkit-scrollbar {
+  width: 8px;
+  background: #f5f5f7;
+}
+::-webkit-scrollbar-thumb {
+  background: #e0e0e5;
+  border-radius: 8px;
+}
+label, .form-label {
+  font-weight: 500;
+  color: #333;
+}
+.pagination .page-link {
+  border-radius: 12px !important;
+  color: #0071e3;
+  border: none;
+}
+.pagination .page-item.active .page-link {
+  background: #0071e3;
+  color: #fff;
+  border: none;
+}
+  </style>
+</head>
+<body>
+<!-- 登录密码遮罩 -->
+<div id="login-mask" style="position:fixed;z-index:9999;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.98);display:flex;align-items:center;justify-content:center;flex-direction:column;">
+  <div class="card p-4" style="min-width:320px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <h4 class="mb-3 text-center">请输入访问密码</h4>
+    <input type="password" id="login-password" class="form-control mb-3" placeholder="密码" autofocus>
+    <button class="btn btn-primary w-100" id="login-btn">登录</button>
+    <div id="login-error" class="text-danger mt-2 text-center" style="display:none;font-size:0.98rem;">密码错误，请重试</div>
+  </div>
+</div>
+<div class="container">
+  <h2 class="mb-4">表格合并与可视化工具 <small class="text-muted">李飘组专用</small></h2>
+  <div class="mb-3">
+    <label for="file-input" class="form-label">批量上传表格（支持Excel/CSV，Ctrl多选）：</label>
+    <input class="form-control" type="file" id="file-input" multiple accept=".xlsx,.xls,.csv">
+    <div id="file-names" class="mt-2 text-secondary" style="font-size:1.05rem;"></div>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">选择核价模式：</label>
+    <div id="mode-btn-group" class="btn-group w-auto d-inline-flex" role="group" aria-label="核价模式">
+      <button type="button" class="btn btn-outline-primary active" data-mode="us" id="btn-us">美站核价</button>
+      <button type="button" class="btn btn-outline-primary" data-mode="ca" id="btn-ca">加站核价</button>
+    </div>
+    <button class="btn btn-primary ms-3" id="merge-btn">合并表格</button>
+    <button class="btn btn-success ms-2" id="download-btn" disabled>下载合并表格</button>
+  </div>
+  <!-- 运费计算模式按钮 -->
+  <div class="mb-3">
+    <label class="form-label">运费计算模式：</label>
+    <button class="btn btn-warning" id="merge-fee-btn">运费合并</button>
+    <button class="btn btn-warning ms-2" id="merge-fee-ca-btn">加站运费合并</button>
+    <span id="upload-hint" class="alert alert-info fw-bold ms-3" style="display:inline-block;padding:6px 16px;margin-bottom:0;vertical-align:middle;">请上传包含SKU、扫描重量、最新成本价的表格</span>
+  </div>
+  <div id="chart" style="width:100%;height:400px;"></div>
+  <div id="table-container" class="mb-3"></div>
+</div>
+<script>
+let mergedData = [];
+let mergedHeader = [];
+let currentPage = 1;
+const pageSize = 100;
+let currentMode = 'us';
+
+// 新表头顺序：每个Y1毛利率、Y2毛利率后面都紧跟一个"是否报活动"列
+const US_PRICING_HEADER = [
+  "SPU ID", "SKC ID", "SKC货号", "SKU货号", "申报价格", "运费补贴(USD)", "物流时效", "SKU", "SKU颜色", "前缀", "状态", "财务考核类型", "目标毛利率", "Y1费用合计", "Y2费用合计",
+  "原售价(RMB)",
+  "Y1毛利率",
+  "Y2毛利率",
+  "0.75售价(RMB)",
+  "Y1毛利率(0.75)",
+  "是否报活动(0.75,Y1)",
+  "Y2毛利率(0.75)",
+  "是否报活动(0.75,Y2)",
+  "0.85售价(RMB)",
+  "Y1毛利率(0.85)",
+  "是否报活动(0.85,Y1)",
+  "Y2毛利率(0.85)",
+  "是否报活动(0.85,Y2)",
+  "0.9售价(RMB)",
+  "Y1毛利率(0.9)",
+  "是否报活动(0.9,Y1)",
+  "Y2毛利率(0.9)",
+  "是否报活动(0.9,Y2)"
+];
+// 字段映射表（常见别名）
+const US_PRICING_FIELD_MAP = {
+  "申报价格": "申报价格",
+  "申报价位": "申报价格",
+  "申报价位(USD)": "申报价格",
+  "运费补贴(物流时效)": "运费补贴(USD)",
+  "运费补贴(USD)": "运费补贴(USD)",
+  "物流时效": "物流时效",
+  "SKU": "SKU",
+  "SKU颜色": "SKU颜色",
+  "颜色SKU": "SKU颜色",
+  "前缀": "前缀",
+  "状态": "状态",
+  "财务考核类型": "财务考核类型",
+  "财务核查类型": "财务考核类型",
+  "目标毛利率": "目标毛利率",
+  "Y1费用合计": "Y1费用合计",
+  "Y2费用合计": "Y2费用合计",
+  "原售价(RMB)": "原售价(RMB)",
+  "Y1毛利率": "Y1毛利率",
+  "Y2毛利率": "Y2毛利率",
+  "0.75售价(RMB)": "0.75售价(RMB)",
+  "Y1毛利率_是否报活动": "Y1毛利率_是否报活动",
+  "Y2毛利率_是否报活动": "Y2毛利率_是否报活动",
+  "0.85售价(RMB)": "0.85售价(RMB)",
+  "0.9售价(RMB)": "0.9售价(RMB)",
+  "SPU ID": "SPU ID",
+  "SKC ID": "SKC ID",
+  "SKC货号": "SKC货号",
+  "SKU货号": "SKU货号",
+  "品类": "品类",
+  "品类名称": "品类",
+  "类别": "品类"
+};
+
+// 前缀到财务考核类型映射表
+const PREFIX_TO_TYPE = {
+  'FF': '女装', 'FN': '女装', 'FZ': '女装', 'GZ': '女装', 'LF': '女装', 'MV': '女装', 'WD': '女装', 'CP': '女装', 'JQ': '女装', 'CW': '女装', 'MD': '女装', 'WH': '女装', 'DM': '女装', 'FG': '女装', 'QY': '女装', 'MT': '女装', 'FA': '女装', 'FE': '女装', 'KT': '女装', 'XF': '女装', 'XN': '女装', 'YF': '女装', 'SG': '女装', 'SY': '女装', 'SK': '女装', 'SA': '女装', 'SL': '女装', 'SO': '女装', 'SS': '女装',
+  'FB': '非服', 'FQ': '非服', 'FW': '非服', 'FX': '非服', 'FY': '非服', 'FL': '非服', 'EP': '非服', 'TW': '非服', 'TG': '非服', 'HZ': '非服', 'JS': '非服', 'SQ': '非服', 'FM': '非服', 'PJ': '非服', 'JF': '非服', 'CR': '非服', 'DD': '非服', 'FT': '非服', 'ZZ': '非服', 'YT': '非服', 'FD': '非服', 'AF': '非服', 'QT': '非服', 'EN': '非服', 'SD': '非服', 'DJ': '非服', 'WZ': '非服', 'JJ': '非服', 'ZM': '非服', 'WY': '非服', 'BG': '非服', 'YH': '非服', 'CF': '非服', 'QP': '非服', 'DQ': '非服', 'DH': '非服', 'CT': '非服', 'CY': '非服', 'DY': '非服', 'YG': '非服', 'PR': '非服', 'ZJ': '非服', 'HW': '非服', 'TJ': '非服', 'FV': '非服', 'FJ': '非服', 'GD': '非服', 'MZ': '非服', 'SC': '非服', 'YC': '非服', 'XJ': '非服', 'YO': '非服', 'YY': '非服', 'YR': '非服', 'FH': '非服', 'NP': '非服', 'NB': '非服', 'NW': '非服', 'ND': '非服', 'NG': '非服', 'NS': '非服', 'NT': '非服',
+  'QZ': '其他服装装', 'NZ': '其他服装装', 'FS': '其他服装装', 'SF': '其他服装装', 'ST': '其他服装装', 'SN': '其他服装装', 'FC': '其他服装装', 'SI': '其他服装装', 'XT': '其他服装装', 'KD': '其他服装装', 'KN': '其他服装装',
+};
+
+function normalizeHeader(header) {
+  // 将header映射到US_PRICING_HEADER
+  return header.map(h => US_PRICING_FIELD_MAP[h] || h);
+}
+
+function getTargetProfitRate(type, status) {
+  // 兼容"其他服装装"
+  if (type === '其他服装装') type = '其他服装';
+  if (status === '滞销品' && type === '其他服装') return 0.18;
+  if ((status === '新品' || status === '畅销品' || status === '一般销量') && type === '其他服装') return 0.25;
+  if (status === '滞销品' && type === '女装') return 0.25;
+  if ((status === '新品' || status === '畅销品' || status === '一般销量') && type === '女装') return 0.3;
+  if ((status === '畅销品' || status === '一般销量') && type === '非服') return 0.2;
+  if (status === '滞销品' && type === '非服') return 0.15;
+  if (status === '新品' && type === '非服') return 0.2;
+  return '';
+}
+
+function safeNum(val) {
+  let n = parseFloat(val);
+  return isNaN(n) ? 0 : n;
+}
+
+function calcAutoFields(row) {
+  // 自动填充前缀：前缀=LEFT(SKU,2)
+  if ((!row['前缀'] || row['前缀'] === '') && row['SKU']) {
+    row['前缀'] = row['SKU'].substring(0,2);
+  }
+  // 字段名以US_PRICING_HEADER为准
+  // 申报价格: E, 运费补贴(USD): F, Y1费用合计: N, Y2费用合计: O, 目标毛利率: M
+  const e = safeNum(row['申报价格']);
+  const f = safeNum(row['运费补贴(USD)']);
+  const type = row['财务考核类型'];
+  const category = row['品类'] || row['品类名称'] || row['类别'] || '';
+  // 自动根据前缀赋值财务考核类型
+  if (!row['财务考核类型'] && row['前缀']) {
+    row['财务考核类型'] = PREFIX_TO_TYPE[row['前缀']] || '';
+  }
+  // 目标毛利率
+  row['目标毛利率'] = getTargetProfitRate(row['财务考核类型'], row['状态']);
+  // 原售价(RMB)
+  row['原售价(RMB)'] = ((e + f) * 7.2).toFixed(2);
+  const s = safeNum(row['原售价(RMB)']);
+  // Y1毛利率
+  row['Y1毛利率'] = s ? ((s - e) / s).toFixed(4) : '';
+  // 是否报活动
+  row['是否报活动'] = (row['Y1毛利率'] !== '' && row['目标毛利率'] !== '' && (parseFloat(row['Y1毛利率']) - safeNum(row['目标毛利率']) > 0)) ? 'Y' : 'X';
+  // 0.75售价(RMB)
+  row['0.75售价(RMB)'] = ((e * 0.75 + f) * 7.2).toFixed(2);
+  const x = safeNum(row['0.75售价(RMB)']);
+  const n = safeNum(row['Y1费用合计']);
+  const o = safeNum(row['Y2费用合计']);
+  // Y1毛利率
+  row['Y1毛利率'] = s ? ((s - n) / s).toFixed(4) : '';
+  // Y2毛利率
+  row['Y2毛利率'] = s ? ((s - o) / s).toFixed(4) : '';
+  // 是否报活动
+  row['是否报活动'] = (row['Y1毛利率'] !== '' && row['目标毛利率'] !== '' && (parseFloat(row['Y1毛利率']) - safeNum(row['目标毛利率']) > 0)) ? 'Y' : 'X';
+  // 0.75售价(RMB)
+  row['0.75售价(RMB)'] = ((e * 0.75 + f) * 7.2).toFixed(2);
+  const t75 = x ? ((x - n) / x).toFixed(4) : '';
+  row['Y1毛利率(0.75)'] = t75;
+  // Y2毛利率(0.75售价)
+  const v75 = x ? ((x - o) / x).toFixed(4) : '';
+  row['Y2毛利率(0.75)'] = v75;
+  // 是否报活动(0.75,Y1)
+  row['是否报活动(0.75,Y1)'] = (t75 && row['目标毛利率'] !== '' && (t75 - row['目标毛利率'] > 0)) ? 'Y' : 'X';
+  // 是否报活动(0.75,Y2)
+  row['是否报活动(0.75,Y2)'] = (v75 && row['目标毛利率'] !== '' && (v75 - row['目标毛利率'] > 0)) ? 'Y' : 'X';
+  // 0.85售价(RMB)
+  row['0.85售价(RMB)'] = ((e * 0.85 + f) * 7.2).toFixed(2);
+  const ac = safeNum(row['0.85售价(RMB)']);
+  // Y1毛利率(0.85售价)
+  const t85 = ac ? ((ac - n) / ac).toFixed(4) : '';
+  row['Y1毛利率(0.85)'] = t85;
+  // Y2毛利率(0.85售价)
+  const v85 = ac ? ((ac - o) / ac).toFixed(4) : '';
+  row['Y2毛利率(0.85)'] = v85;
+  // 是否报活动(0.85,Y1)
+  row['是否报活动(0.85,Y1)'] = (t85 && row['目标毛利率'] !== '' && (t85 - row['目标毛利率'] > 0)) ? 'Y' : 'X';
+  // 是否报活动(0.85,Y2)
+  row['是否报活动(0.85,Y2)'] = (v85 && row['目标毛利率'] !== '' && (v85 - row['目标毛利率'] > 0)) ? 'Y' : 'X';
+  // 0.9售价(RMB)
+  row['0.9售价(RMB)'] = ((e * 0.9 + f) * 7.2).toFixed(2);
+  const s9 = safeNum(row['0.9售价(RMB)']);
+  // Y1毛利率(0.9售价)
+  const t9 = s9 ? ((s9 - n) / s9).toFixed(4) : '';
+  row['Y1毛利率(0.9)'] = t9;
+  // Y2毛利率(0.9售价)
+  const v9 = s9 ? ((s9 - o) / s9).toFixed(4) : '';
+  row['Y2毛利率(0.9)'] = v9;
+  // 是否报活动(0.9,Y1)
+  row['是否报活动(0.9,Y1)'] = (t9 && row['目标毛利率'] !== '' && (t9 - row['目标毛利率'] > 0)) ? 'Y' : 'X';
+  // 是否报活动(0.9,Y2)
+  row['是否报活动(0.9,Y2)'] = (v9 && row['目标毛利率'] !== '' && (v9 - row['目标毛利率'] > 0)) ? 'Y' : 'X';
+  // 运费补贴(USD)逻辑调整
+  row['运费补贴(USD)'] = e < 30 ? 2.99 : 0;
+}
+
+// Y1运费区间表
+const Y1_FREIGHT_TABLE = [
+  { min: 0, max: 0.1, freightPerKg: 80, fee: 34 },
+  { min: 0.101, max: 0.2, freightPerKg: 80, fee: 34 },
+  { min: 0.201, max: 0.3, freightPerKg: 80, fee: 35 },
+  { min: 0.301, max: 0.45, freightPerKg: 80, fee: 37 },
+  { min: 0.451, max: 0.7, freightPerKg: 80, fee: 59 },
+  { min: 0.701, max: 2, freightPerKg: 80, fee: 59 },
+  { min: 2.001, max: 10, freightPerKg: 80, fee: 70 }
+];
+function y1FreightLookup(weight) {
+  for (let row of Y1_FREIGHT_TABLE) {
+    if (weight >= row.min && weight <= row.max) return row;
+  }
+  return null;
+}
+
+// Y2运费区间表
+const Y2_FREIGHT_TABLE = [
+  { min: 0, max: 0.1, freightPerKg: 80, fee: 28 },
+  { min: 0.101, max: 0.2, freightPerKg: 80, fee: 28 },
+  { min: 0.201, max: 0.3, freightPerKg: 80, fee: 29 },
+  { min: 0.301, max: 0.45, freightPerKg: 80, fee: 31 },
+  { min: 0.451, max: 0.7, freightPerKg: 80, fee: 53 },
+  { min: 0.701, max: 2, freightPerKg: 80, fee: 53 },
+  { min: 2.001, max: 10, freightPerKg: 80, fee: 64 }
+];
+function y2FreightLookup(weight) {
+  for (let row of Y2_FREIGHT_TABLE) {
+    if (weight >= row.min && weight <= row.max) return row;
+  }
+  return null;
+}
+
+// 工具函数：根据字段名（不区分大小写）获取实际表头名
+function findHeaderName(headerArr, target) {
+  target = target.toLowerCase();
+  return headerArr.find(h => h && h.toLowerCase() === target);
+}
+
+function calcAllFreight(row, headerArr) {
+  // 调试输出
+  console.log('row:', row);
+  const weightKey = findHeaderName(headerArr, '扫描重量') || findHeaderName(headerArr, '重量');
+  const costKey = findHeaderName(headerArr, '最新成本价') || findHeaderName(headerArr, '成本价');
+  console.log('weightKey:', weightKey, 'costKey:', costKey);
+  const weightVal = row[weightKey] !== undefined && row[weightKey] !== '' ? row[weightKey] : '';
+  const costVal = row[costKey] !== undefined && row[costKey] !== '' ? row[costKey] : '';
+  const weight = parseFloat(weightVal);
+  const cost = parseFloat(costVal);
+  const op = 1;
+  // Y1运费
+  if (!isNaN(weight)) {
+    const match1 = y1FreightLookup(weight);
+    if (match1) {
+      row['Y1运费'] = (weight * match1.freightPerKg + match1.fee).toFixed(2);
+    } else {
+      row['Y1运费'] = '';
+    }
+  } else {
+    row['Y1运费'] = '';
+  }
+  // Y2运费
+  if (!isNaN(weight)) {
+    const match2 = y2FreightLookup(weight);
+    if (match2) {
+      row['Y2运费'] = (weight * match2.freightPerKg + match2.fee).toFixed(2);
+    } else {
+      row['Y2运费'] = '';
+    }
+  } else {
+    row['Y2运费'] = '';
+  }
+  // 恢复Y1费用合计和Y2费用合计的自动计算
+  const y1freight = parseFloat(row['Y1运费']);
+  if (!isNaN(cost) && !isNaN(y1freight)) {
+    row['Y1费用合计'] = (cost + op + y1freight).toFixed(2);
+  } else {
+    row['Y1费用合计'] = '';
+  }
+  const y2freight = parseFloat(row['Y2运费']);
+  if (!isNaN(cost) && !isNaN(y2freight)) {
+    row['Y2费用合计'] = (cost + op + y2freight).toFixed(2);
+  } else {
+    row['Y2费用合计'] = '';
+  }
+}
+
+function mergeUsPricingTablesMainTable(tables) {
+  // 以第一个表为主表，SKU顺序和数量与主表一致
+  const mainTable = tables[0];
+  const [mainHeaderRaw, ...mainRows] = mainTable;
+  const mainHeader = normalizeHeader(mainHeaderRaw);
+  // 构建其他表的SKU->rowObj映射
+  const otherMaps = [];
+  for (let i = 1; i < tables.length; i++) {
+    const [headerRaw, ...rows] = tables[i];
+    const header = normalizeHeader(headerRaw);
+    const map = new Map();
+    for (let row of rows) {
+      let obj = {};
+      for (let j = 0; j < header.length; j++) {
+        obj[header[j]] = row[j] || '';
+      }
+      if (obj['SKU货号']) map.set(obj['SKU货号'], obj);
+    }
+    otherMaps.push(map);
+  }
+  // 新增：构建SPU ID->物流时效映射（从所有表中找）
+  const spuToLogistics = new Map();
+  for (let t of tables) {
+    const [headerRaw, ...rows] = t;
+    const header = normalizeHeader(headerRaw);
+    const spuIdx = header.indexOf('SPU ID');
+    const logisticsIdx = header.indexOf('物流时效');
+    if (spuIdx !== -1 && logisticsIdx !== -1) {
+      for (let row of rows) {
+        const spu = row[spuIdx];
+        const logistics = row[logisticsIdx];
+        if (spu && logistics) spuToLogistics.set(spu, logistics);
+      }
+    }
+  }
+  // 合并主表每一行
+  // 新表头：账号 + US_PRICING_HEADER
+  const result = [["账号", ...US_PRICING_HEADER]];
+  // 获取主表账号列索引（不区分大小写）
+  const mainAccountIdx = mainHeaderRaw.findIndex(h => h && h.toLowerCase() === '账号');
+  for (let row of mainRows) {
+    let obj = {};
+    for (let i = 0; i < mainHeader.length; i++) {
+      obj[mainHeader[i]] = row[i] || '';
+    }
+    const sku = obj['SKU货号'];
+    // 补全空字段
+    for (let field of US_PRICING_HEADER) {
+      if (!obj[field] && sku) {
+        for (let map of otherMaps) {
+          if (map.has(sku) && map.get(sku)[field]) {
+            obj[field] = map.get(sku)[field];
+            break;
+          }
+        }
+      }
+    }
+    // 新增：用SPU ID补全物流时效
+    if ((!obj['物流时效'] || obj['物流时效'] === '') && obj['SPU ID'] && spuToLogistics.has(obj['SPU ID'])) {
+      obj['物流时效'] = spuToLogistics.get(obj['SPU ID']);
+    }
+    // 自动计算字段
+    calcAutoFields(obj);
+    // 账号列内容
+    let account = mainAccountIdx !== -1 ? row[mainAccountIdx] : '';
+    result.push([account, ...US_PRICING_HEADER.map(f => obj[f] || '')]);
+  }
+  // 处理其他表（主表没有的SKU）
+  for (let tIdx = 1; tIdx < tables.length; tIdx++) {
+    const [headerRaw, ...rows] = tables[tIdx];
+    const header = normalizeHeader(headerRaw);
+    const accountIdx = headerRaw.findIndex(h => h && h.toLowerCase() === '账号');
+    for (let row of rows) {
+      let obj = {};
+      for (let i = 0; i < header.length; i++) {
+        obj[header[i]] = row[i] || '';
+      }
+      const sku = obj['SKU货号'];
+      // 检查主表是否已包含该SKU
+      const mainSkus = mainRows.map(r => r[mainHeader.indexOf('SKU货号')]);
+      if (!sku || mainSkus.includes(sku)) continue;
+      // 自动计算字段
+      calcAutoFields(obj);
+      let account = accountIdx !== -1 ? row[accountIdx] : '';
+      result.push([account, ...US_PRICING_HEADER.map(f => obj[f] || '')]);
+    }
+  }
+  return result;
+}
+
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      let data = e.target.result;
+      let workbook;
+      if (file.name.endsWith('.csv')) {
+        workbook = XLSX.read(data, {type: 'binary', codepage: 65001});
+      } else {
+        workbook = XLSX.read(data, {type: 'binary'});
+      }
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const json = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ''});
+      resolve(json);
+    };
+    reader.onerror = reject;
+    reader.readAsBinaryString(file);
+  });
+}
+
+function mergeTables(tables) {
+  // Find the longest header
+  let header = tables.reduce((h, t) => t[0].length > h.length ? t[0] : h, []);
+  // Merge all rows, skip header for subsequent tables
+  let data = [header];
+  for (let t of tables) {
+    let [h, ...rows] = t;
+    for (let row of rows) {
+      // Pad row to header length
+      let padded = row.concat(Array(header.length - row.length).fill(''));
+      data.push(padded);
+    }
+  }
+  return data;
+}
+
+// 分页相关
+function updateTable() {
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  const pageData = mergedData.slice(start, end);
+  let html = '<div style="overflow-x:auto;"><table class="table table-bordered table-hover align-middle text-center">';
+  html += '<thead><tr>' + mergedHeader.map(x => `<th class="text-center align-middle">${x}</th>`).join('') + '</tr></thead>';
+  html += '<tbody>';
+  for (let i = 0; i < pageData.length; i++) {
+    html += '<tr>' + pageData[i].map(x => `<td class="text-center align-middle">${x}</td>`).join('') + '</tr>';
+  }
+  html += '</tbody></table></div>';
+  // 分页控件
+  const totalPages = Math.ceil(mergedData.length / pageSize);
+  html += `<nav><ul class="pagination pagination-sm">`;
+  for (let i = 1; i <= totalPages; i++) {
+    html += `<li class="page-item${i===currentPage?' active':''}"><a class="page-link" href="#" onclick="gotoPage(${i});return false;">${i}</a></li>`;
+  }
+  html += '</ul></nav>';
+  document.getElementById('table-container').innerHTML = html;
+  renderChart();
+}
+
+function renderTable(data) {
+  if (!data || !data.length) {
+    document.getElementById('table-container').innerHTML = '';
+    return;
+  }
+  mergedHeader = data[0];
+  mergedData = data.slice(1);
+  currentPage = 1;
+  updateTable();
+}
+
+window.gotoPage = function(page) {
+  currentPage = page;
+  updateTable();
+}
+
+function renderChart() {
+  if (!mergedHeader.length || !mergedData.length) return;
+  document.getElementById('chart').style.display = '';
+  document.getElementById('upload-hint').style.display = 'none';
+  let stat;
+  if (currentMode === 'ca') {
+    // 加站核价：只统计0.75、0.85、0.9售价下"是否报活动"为Y的SKU数量
+    stat = [
+      { name: '0.75售价可报活动', value: 0 },
+      { name: '0.85售价可报活动', value: 0 },
+      { name: '0.9售价可报活动', value: 0 }
+    ];
+    mergedData.forEach(row => {
+      if (row[mergedHeader.indexOf('是否报活动(0.75)')] === 'Y') stat[0].value++;
+      if (row[mergedHeader.indexOf('是否报活动(0.85)')] === 'Y') stat[1].value++;
+      if (row[mergedHeader.indexOf('是否报活动(0.9)')] === 'Y') stat[2].value++;
+    });
+  } else {
+    // 美站核价：原有统计方式
+    stat = [
+      { name: '0.75售价 Y1可报活动', value: 0 },
+      { name: '0.75售价 Y2可报活动', value: 0 },
+      { name: '0.85售价 Y1可报活动', value: 0 },
+      { name: '0.85售价 Y2可报活动', value: 0 },
+      { name: '0.9售价 Y1可报活动', value: 0 },
+      { name: '0.9售价 Y2可报活动', value: 0 }
+    ];
+    mergedData.forEach(row => {
+      if (row[mergedHeader.indexOf('是否报活动(0.75,Y1)')] === 'Y') stat[0].value++;
+      if (row[mergedHeader.indexOf('是否报活动(0.75,Y2)')] === 'Y') stat[1].value++;
+      if (row[mergedHeader.indexOf('是否报活动(0.85,Y1)')] === 'Y') stat[2].value++;
+      if (row[mergedHeader.indexOf('是否报活动(0.85,Y2)')] === 'Y') stat[3].value++;
+      if (row[mergedHeader.indexOf('是否报活动(0.9,Y1)')] === 'Y') stat[4].value++;
+      if (row[mergedHeader.indexOf('是否报活动(0.9,Y2)')] === 'Y') stat[5].value++;
+    });
+  }
+  const chartDom = document.getElementById('chart');
+  const myChart = echarts.init(chartDom);
+  const option = {
+    title: {
+      text: currentMode === 'ca' ? '各活动售价下可报活动SKU数量（加站核价）' : '各活动售价下可报活动SKU数量',
+      left: 'center',
+      top: 10,
+      textStyle: {
+        fontWeight: 'bold',
+        fontSize: 20
+      }
+    },
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}<br/>数量: {c} ({d}%)'
+    },
+    legend: {
+      orient: 'horizontal',
+      bottom: 0,
+      left: 'center',
+      textStyle: { fontSize: 14 }
+    },
+    color: ['#5470C6', '#FAC858', '#EE6666', '#91CC75', '#73C0DE', '#3BA272'],
+    series: [{
+      name: '可报活动SKU数量',
+      type: 'pie',
+      radius: ['40%', '70%'],
+      avoidLabelOverlap: false,
+      itemStyle: {
+        borderRadius: 8,
+        borderColor: '#fff',
+        borderWidth: 2
+      },
+      label: {
+        show: true,
+        position: 'outside',
+        formatter: '{b}\n{c}个 ({d}%)',
+        fontSize: 14
+      },
+      emphasis: {
+        label: {
+          show: true,
+          fontSize: 18,
+          fontWeight: 'bold',
+          color: '#333'
+        },
+        itemStyle: {
+          shadowBlur: 20,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0, 0, 0, 0.3)'
+        }
+      },
+      labelLine: {
+        show: true,
+        length: 20,
+        length2: 20
+      },
+      data: stat
+    }]
+  };
+  myChart.setOption(option);
+}
+
+document.getElementById('btn-us').onclick = function() {
+  currentMode = 'us';
+  this.classList.add('active');
+  document.getElementById('btn-ca').classList.remove('active');
+};
+document.getElementById('btn-ca').onclick = function() {
+  currentMode = 'ca';
+  this.classList.add('active');
+  document.getElementById('btn-us').classList.remove('active');
+};
+
+// 加站核价表头
+const CA_PRICING_HEADER = [
+  "账号", "SPU ID", "SKC ID", "SKC货号", "SKU货号", "申报价格", "运费补贴(USD)", "SKU", "颜色SKU", "前缀", "状态", "财务考核类型", "目标毛利率", "费用合计", "原售价(RMB)", "毛利率",
+  "0.75售价(RMB)", "毛利率(0.75)", "是否报活动(0.75)",
+  "0.85售价(RMB)", "毛利率(0.85)", "是否报活动(0.85)",
+  "0.9售价(RMB)", "毛利率(0.9)", "是否报活动(0.9)"
+];
+
+function calcCaAutoFields(row) {
+  // 运费补贴(USD)
+  const price = parseFloat(row['申报价格'] || row['申报价格'] || 0);
+  row['运费补贴(USD)'] = price < 30 ? 2.8 : 0;
+  // 财务考核类型自动赋值
+  if (!row['财务考核类型'] && row['前缀']) {
+    row['财务考核类型'] = PREFIX_TO_TYPE[row['前缀']] || '';
+  }
+  // 目标毛利率自动赋值
+  row['目标毛利率'] = getTargetProfitRate(row['财务考核类型'], row['状态']);
+  // 售价 = 申报价格 + 运费补贴
+  const sale = price + parseFloat(row['运费补贴(USD)']);
+  // 原售价(RMB)
+  row['原售价(RMB)'] = (sale * 7.2).toFixed(2);
+  // 费用合计
+  const fee = parseFloat(row['费用合计'] || 0);
+  // 毛利率
+  const origRmb = parseFloat(row['原售价(RMB)']);
+  row['毛利率'] = origRmb ? ((origRmb - fee) / origRmb).toFixed(4) : '';
+  // 0.75售价(RMB)
+  row['0.75售价(RMB)'] = ((price * 0.75 + parseFloat(row['运费补贴(USD)'])) * 7.2).toFixed(2);
+  const s75 = parseFloat(row['0.75售价(RMB)']);
+  row['毛利率(0.75)'] = s75 ? ((s75 - fee) / s75).toFixed(4) : '';
+  // 0.85售价(RMB)
+  row['0.85售价(RMB)'] = ((price * 0.85 + parseFloat(row['运费补贴(USD)'])) * 7.2).toFixed(2);
+  const s85 = parseFloat(row['0.85售价(RMB)']);
+  row['毛利率(0.85)'] = s85 ? ((s85 - fee) / s85).toFixed(4) : '';
+  // 0.9售价(RMB)
+  row['0.9售价(RMB)'] = ((price * 0.9 + parseFloat(row['运费补贴(USD)'])) * 7.2).toFixed(2);
+  const s9 = parseFloat(row['0.9售价(RMB)']);
+  row['毛利率(0.9)'] = s9 ? ((s9 - fee) / s9).toFixed(4) : '';
+  // 是否报活动
+  const target = parseFloat(row['目标毛利率'] || 0);
+  row['是否报活动(0.75)'] = (row['毛利率(0.75)'] !== '' && target !== '' && (parseFloat(row['毛利率(0.75)']) - target > 0)) ? 'Y' : 'X';
+  row['是否报活动(0.85)'] = (row['毛利率(0.85)'] !== '' && target !== '' && (parseFloat(row['毛利率(0.85)']) - target > 0)) ? 'Y' : 'X';
+  row['是否报活动(0.9)'] = (row['毛利率(0.9)'] !== '' && target !== '' && (parseFloat(row['毛利率(0.9)']) - target > 0)) ? 'Y' : 'X';
+}
+
+function mergeCaPricingTablesMainTable(tables) {
+  // 以第一个表为主表，SKU顺序和数量与主表一致
+  const mainTable = tables[0];
+  const [mainHeaderRaw, ...mainRows] = mainTable;
+  // 构建其他表的SKU->rowObj映射
+  const otherMaps = [];
+  for (let i = 1; i < tables.length; i++) {
+    const [headerRaw, ...rows] = tables[i];
+    const map = new Map();
+    for (let row of rows) {
+      let obj = {};
+      for (let j = 0; j < headerRaw.length; j++) {
+        obj[headerRaw[j]] = row[j] || '';
+      }
+      if (obj['SKU货号']) map.set(obj['SKU货号'], obj);
+    }
+    otherMaps.push(map);
+  }
+  // 合并主表每一行
+  const result = [CA_PRICING_HEADER];
+  const mainAccountIdx = mainHeaderRaw.findIndex(h => h && h.toLowerCase() === '账号');
+  for (let row of mainRows) {
+    let obj = {};
+    for (let i = 0; i < mainHeaderRaw.length; i++) {
+      obj[mainHeaderRaw[i]] = row[i] || '';
+    }
+    const sku = obj['SKU货号'];
+    // 补全空字段
+    for (let field of CA_PRICING_HEADER) {
+      if (!obj[field] && sku) {
+        for (let map of otherMaps) {
+          if (map.has(sku) && map.get(sku)[field]) {
+            obj[field] = map.get(sku)[field];
+            break;
+          }
+        }
+      }
+    }
+    // 自动计算字段
+    calcCaAutoFields(obj);
+    // 账号列内容
+    let account = mainAccountIdx !== -1 ? row[mainAccountIdx] : '';
+    result.push([account, ...CA_PRICING_HEADER.slice(1).map(f => obj[f] || '')]);
+  }
+  // 处理其他表（主表没有的SKU）
+  for (let tIdx = 1; tIdx < tables.length; tIdx++) {
+    const [headerRaw, ...rows] = tables[tIdx];
+    const accountIdx = headerRaw.findIndex(h => h && h.toLowerCase() === '账号');
+    for (let row of rows) {
+      let obj = {};
+      for (let i = 0; i < headerRaw.length; i++) {
+        obj[headerRaw[i]] = row[i] || '';
+      }
+      const sku = obj['SKU货号'];
+      // 检查主表是否已包含该SKU
+      const mainSkus = mainRows.map(r => r[mainHeaderRaw.indexOf('SKU货号')]);
+      if (!sku || mainSkus.includes(sku)) continue;
+      // 自动计算字段
+      calcCaAutoFields(obj);
+      let account = accountIdx !== -1 ? row[accountIdx] : '';
+      result.push([account, ...CA_PRICING_HEADER.slice(1).map(f => obj[f] || '')]);
+    }
+  }
+  return result;
+}
+
+// 修改合并按钮逻辑，支持加站核价
+const oldMergeBtnHandler = document.getElementById('merge-btn').onclick;
+document.getElementById('merge-btn').onclick = async function() {
+  const files = document.getElementById('file-input').files;
+  if (!files.length) { alert('请先上传表格文件！'); return; }
+  let tables = [];
+  for (let file of files) {
+    try {
+      let table = await readFile(file);
+      tables.push(table);
+    } catch (e) {
+      alert(`读取文件${file.name}失败：` + e);
+      return;
+    }
+  }
+  let merged;
+  if (currentMode === 'us') {
+    merged = mergeUsPricingTablesMainTable(tables);
+  } else if (currentMode === 'ca') {
+    merged = mergeCaPricingTablesMainTable(tables);
+  } else {
+    merged = mergeTables(tables);
+  }
+  renderTable(merged);
+  document.getElementById('download-btn').disabled = false;
+};
+
+document.getElementById('download-btn').onclick = function() {
+  if (!mergedHeader.length) return;
+  const ws = XLSX.utils.aoa_to_sheet([mergedHeader, ...mergedData]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '合并结果');
+  XLSX.writeFile(wb, '合并表格结果.xlsx');
+};
+
+// 加站运费区间表（A3:E15，金额USD为第5列）
+const CA_FREIGHT_TABLE = [
+  { min: 0, max: 0.15, usd: 2.87 },
+  { min: 0.151, max: 0.25, usd: 3.23 },
+  { min: 0.251, max: 0.5, usd: 3.59 },
+  { min: 0.501, max: 0.75, usd: 3.59 },
+  { min: 0.751, max: 1, usd: 3.95 },
+  { min: 1.001, max: 1.5, usd: 5.02 },
+  { min: 1.501, max: 2, usd: 5.74 },
+  { min: 2.001, max: 2.5, usd: 6.46 },
+  { min: 2.501, max: 3, usd: 6.82 },
+  { min: 3.001, max: 3.5, usd: 7.18 },
+  { min: 3.501, max: 4, usd: 8.25 },
+  { min: 4.001, max: 4.5, usd: 8.97 },
+  { min: 4.501, max: 5, usd: 9.69 },
+];
+function caFreightLookup(weight) {
+  for (let row of CA_FREIGHT_TABLE) {
+    if (weight >= row.min && weight <= row.max) return row.usd;
+  }
+  return null;
+}
+
+document.getElementById('merge-fee-ca-btn').onclick = async function() {
+  const files = document.getElementById('file-input').files;
+  if (!files.length) { alert('请先上传表格文件！'); return; }
+  let tables = [];
+  for (let file of files) {
+    try {
+      let table = await readFile(file);
+      tables.push(table);
+    } catch (e) {
+      alert(`读取文件${file.name}失败：` + e);
+      return;
+    }
+  }
+  // 字段校验：必须有SKU、扫描重量、最新成本价（不区分大小写）
+  const requiredFields = ['SKU', '扫描重量', '最新成本价'];
+  const header = tables[0][0];
+  const missing = requiredFields.filter(f => !hasField(header, f));
+  if (missing.length) {
+    alert('缺少必要字段：' + missing.join('、'));
+    return;
+  }
+  const rows = tables[0].slice(1);
+  let result = [['SKU', '运费合计']];
+  for (let row of rows) {
+    let rowObj = {};
+    header.forEach((h, i) => rowObj[h] = row[i]);
+    // 取字段
+    const sku = rowObj['SKU'] || rowObj['sku'] || '';
+    const weight = parseFloat(rowObj['扫描重量'] || rowObj['重量'] || rowObj['scan重量'] || rowObj['Scan重量'] || rowObj['scanweight'] || rowObj['ScanWeight'] || '');
+    const cost = parseFloat(rowObj['最新成本价'] || rowObj['成本价'] || '');
+    if (!sku || isNaN(weight) || isNaN(cost)) {
+      result.push([sku, '']);
+      continue;
+    }
+    // 查找区间金额（USD）
+    const usd = caFreightLookup(weight);
+    if (usd === null) {
+      result.push([sku, '']);
+      continue;
+    }
+    // 运费 = 金额（USD）* 7.2
+    const freight = usd * 7.2;
+    // 头程+换单费 = 重量*70+2.6
+    const firstLeg = weight * 70 + 2.6;
+    // 总运费 = 运费 + 头程+换单费
+    const totalFreight = freight + firstLeg;
+    // 运费合计 = 最新成本价 + 1 + 总运费
+    const total = cost + 1 + totalFreight;
+    result.push([sku, total.toFixed(2)]);
+  }
+  renderTable(result);
+  mergedHeader = result[0];
+  mergedData = result.slice(1);
+  document.getElementById('download-btn').disabled = false;
+  document.getElementById('chart').style.display = 'none';
+};
+
+// 登录密码逻辑
+(function(){
+  const mask = document.getElementById('login-mask');
+  const pwdInput = document.getElementById('login-password');
+  const btn = document.getElementById('login-btn');
+  const error = document.getElementById('login-error');
+  const CORRECT_PWD = '123456'; // 你可以修改为你想要的密码
+  function tryLogin() {
+    if (pwdInput.value === CORRECT_PWD) {
+      mask.style.display = 'none';
+      document.body.style.overflow = '';
+    } else {
+      error.style.display = 'block';
+      pwdInput.value = '';
+      pwdInput.focus();
+    }
+  }
+  btn.onclick = tryLogin;
+  pwdInput.onkeydown = function(e){ if(e.key==='Enter') tryLogin(); };
+  // 禁止滚动
+  document.body.style.overflow = 'hidden';
+})();
+
+// 校验时也不区分大小写
+function hasField(headerArr, target) {
+  target = target.toLowerCase();
+  return headerArr.some(h => h && h.toLowerCase() === target);
+}
+
+document.getElementById('file-input').onchange = function() {
+  const files = this.files;
+  const names = Array.from(files).map(f => f.name).join('，');
+  document.getElementById('file-names').textContent = files.length ? '已上传文件：' + names : '';
+};
+
+document.getElementById('merge-fee-btn').onclick = async function() {
+  const files = document.getElementById('file-input').files;
+  if (!files.length) { alert('请先上传表格文件！'); return; }
+  let tables = [];
+  for (let file of files) {
+    try {
+      let table = await readFile(file);
+      tables.push(table);
+    } catch (e) {
+      alert(`读取文件${file.name}失败：` + e);
+      return;
+    }
+  }
+  // 字段校验：必须有SKU、扫描重量、最新成本价（不区分大小写）
+  const requiredFields = ['SKU', '扫描重量', '最新成本价'];
+  const header = tables[0][0];
+  const missing = requiredFields.filter(f => !hasField(header, f));
+  if (missing.length) {
+    alert('缺少必要字段：' + missing.join('、'));
+    return;
+  }
+  const rows = tables[0].slice(1);
+  let result = [['SKU', 'Y1费用合计', 'Y2费用合计']];
+  // Y1区间表
+  const Y1_TABLE = [
+    { min: 0, max: 0.1, freight: 80, handle: 34 },
+    { min: 0.101, max: 0.2, freight: 80, handle: 34 },
+    { min: 0.201, max: 0.3, freight: 80, handle: 35 },
+    { min: 0.301, max: 0.45, freight: 80, handle: 37 },
+    { min: 0.451, max: 0.7, freight: 80, handle: 59 },
+    { min: 0.701, max: 2, freight: 80, handle: 59 },
+    { min: 2.001, max: 10, freight: 80, handle: 70 },
+  ];
+  // Y2区间表
+  const Y2_TABLE = [
+    { min: 0, max: 0.1, freight: 80, handle: 28 },
+    { min: 0.101, max: 0.2, freight: 80, handle: 28 },
+    { min: 0.201, max: 0.3, freight: 80, handle: 29 },
+    { min: 0.301, max: 0.45, freight: 80, handle: 31 },
+    { min: 0.451, max: 0.7, freight: 80, handle: 53 },
+    { min: 0.701, max: 2, freight: 80, handle: 53 },
+    { min: 2.001, max: 10, freight: 80, handle: 64 },
+  ];
+  function lookupTable(weight, table) {
+    for (let row of table) {
+      if (weight >= row.min && weight <= row.max) return row;
+    }
+    return null;
+  }
+  for (let row of rows) {
+    let rowObj = {};
+    header.forEach((h, i) => rowObj[h] = row[i]);
+    const sku = rowObj['SKU'] || rowObj['sku'] || '';
+    const weight = parseFloat(rowObj['扫描重量'] || rowObj['重量'] || rowObj['scan重量'] || rowObj['Scan重量'] || rowObj['scanweight'] || rowObj['ScanWeight'] || '');
+    const cost = parseFloat(rowObj['最新成本价'] || rowObj['成本价'] || '');
+    if (!sku || isNaN(weight) || isNaN(cost)) {
+      result.push([sku, '', '']);
+      continue;
+    }
+    const y1 = lookupTable(weight, Y1_TABLE);
+    const y2 = lookupTable(weight, Y2_TABLE);
+    const y1Total = cost + 1 + (y1 ? weight * y1.freight + y1.handle : 0);
+    const y2Total = cost + 1 + (y2 ? weight * y2.freight + y2.handle : 0);
+    result.push([sku, y1Total.toFixed(2), y2Total.toFixed(2)]);
+  }
+  renderTable(result);
+  mergedHeader = result[0];
+  mergedData = result.slice(1);
+  document.getElementById('download-btn').disabled = false;
+  document.getElementById('chart').style.display = 'none';
+};
+</script>
+</body>
+</html> 
