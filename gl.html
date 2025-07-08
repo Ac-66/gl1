@@ -127,6 +127,7 @@ label, .form-label {
     </div>
     <button class="btn btn-primary ms-3" id="merge-btn">合并表格</button>
     <button class="btn btn-success ms-2" id="download-btn" disabled>下载合并表格</button>
+    <button class="btn btn-info ms-2" id="activity-stats-btn" disabled>是否报活动统计</button>
   </div>
   <!-- 运费计算模式按钮 -->
   <div class="mb-3">
@@ -137,6 +138,8 @@ label, .form-label {
   </div>
   <div id="chart" style="width:100%;height:400px;"></div>
   <div id="table-container" class="mb-3"></div>
+  <div id="activity-stats-table" class="mb-3"></div>
+  <div id="activity-stats-chart" style="width:100%;height:400px;display:none;"></div>
 </div>
 <script>
 let mergedData = [];
@@ -260,8 +263,9 @@ function calcAutoFields(row) {
   row['Y1毛利率'] = s ? ((s - n) / s).toFixed(4) : '';
   // Y2毛利率
   row['Y2毛利率'] = s ? ((s - o) / s).toFixed(4) : '';
-  // 是否报活动
-  row['是否报活动'] = (row['Y1毛利率'] !== '' && row['目标毛利率'] !== '' && (parseFloat(row['Y1毛利率']) - safeNum(row['目标毛利率']) > 0)) ? 'Y' : 'X';
+  // 是否报活动 - 修正数据类型处理
+  const targetRate = safeNum(row['目标毛利率']);
+  row['是否报活动'] = (row['Y1毛利率'] !== '' && targetRate !== 0 && (parseFloat(row['Y1毛利率']) - targetRate > 0)) ? 'Y' : 'X';
   // 0.75售价(RMB)
   row['0.75售价(RMB)'] = ((e * 0.75 + f) * 7.2).toFixed(2);
   const x = safeNum(row['0.75售价(RMB)']);
@@ -270,10 +274,10 @@ function calcAutoFields(row) {
   // Y2毛利率(0.75售价)
   const v75 = x ? ((x - o) / x).toFixed(4) : '';
   row['Y2毛利率(0.75)'] = v75;
-  // 是否报活动(0.75,Y1)
-  row['是否报活动(0.75,Y1)'] = (t75 && row['目标毛利率'] !== '' && (t75 - row['目标毛利率'] > 0)) ? 'Y' : 'X';
-  // 是否报活动(0.75,Y2)
-  row['是否报活动(0.75,Y2)'] = (v75 && row['目标毛利率'] !== '' && (v75 - row['目标毛利率'] > 0)) ? 'Y' : 'X';
+  // 是否报活动(0.75,Y1) - 修正数据类型处理
+  row['是否报活动(0.75,Y1)'] = (t75 && targetRate !== 0 && (parseFloat(t75) - targetRate > 0)) ? 'Y' : 'X';
+  // 是否报活动(0.75,Y2) - 修正数据类型处理
+  row['是否报活动(0.75,Y2)'] = (v75 && targetRate !== 0 && (parseFloat(v75) - targetRate > 0)) ? 'Y' : 'X';
   // 0.85售价(RMB)
   row['0.85售价(RMB)'] = ((e * 0.85 + f) * 7.2).toFixed(2);
   const ac = safeNum(row['0.85售价(RMB)']);
@@ -283,10 +287,10 @@ function calcAutoFields(row) {
   // Y2毛利率(0.85售价)
   const v85 = ac ? ((ac - o) / ac).toFixed(4) : '';
   row['Y2毛利率(0.85)'] = v85;
-  // 是否报活动(0.85,Y1)
-  row['是否报活动(0.85,Y1)'] = (t85 && row['目标毛利率'] !== '' && (t85 - row['目标毛利率'] > 0)) ? 'Y' : 'X';
-  // 是否报活动(0.85,Y2)
-  row['是否报活动(0.85,Y2)'] = (v85 && row['目标毛利率'] !== '' && (v85 - row['目标毛利率'] > 0)) ? 'Y' : 'X';
+  // 是否报活动(0.85,Y1) - 修正数据类型处理
+  row['是否报活动(0.85,Y1)'] = (t85 && targetRate !== 0 && (parseFloat(t85) - targetRate > 0)) ? 'Y' : 'X';
+  // 是否报活动(0.85,Y2) - 修正数据类型处理
+  row['是否报活动(0.85,Y2)'] = (v85 && targetRate !== 0 && (parseFloat(v85) - targetRate > 0)) ? 'Y' : 'X';
   // 0.9售价(RMB)
   row['0.9售价(RMB)'] = ((e * 0.9 + f) * 7.2).toFixed(2);
   const s9 = safeNum(row['0.9售价(RMB)']);
@@ -296,10 +300,10 @@ function calcAutoFields(row) {
   // Y2毛利率(0.9售价)
   const v9 = s9 ? ((s9 - o) / s9).toFixed(4) : '';
   row['Y2毛利率(0.9)'] = v9;
-  // 是否报活动(0.9,Y1)
-  row['是否报活动(0.9,Y1)'] = (t9 && row['目标毛利率'] !== '' && (t9 - row['目标毛利率'] > 0)) ? 'Y' : 'X';
-  // 是否报活动(0.9,Y2)
-  row['是否报活动(0.9,Y2)'] = (v9 && row['目标毛利率'] !== '' && (v9 - row['目标毛利率'] > 0)) ? 'Y' : 'X';
+  // 是否报活动(0.9,Y1) - 修正数据类型处理
+  row['是否报活动(0.9,Y1)'] = (t9 && targetRate !== 0 && (parseFloat(t9) - targetRate > 0)) ? 'Y' : 'X';
+  // 是否报活动(0.9,Y2) - 修正数据类型处理
+  row['是否报活动(0.9,Y2)'] = (v9 && targetRate !== 0 && (parseFloat(v9) - targetRate > 0)) ? 'Y' : 'X';
 }
 
 // Y1运费区间表
@@ -803,6 +807,7 @@ document.getElementById('merge-btn').onclick = async function() {
   }
   renderTable(merged);
   document.getElementById('download-btn').disabled = false;
+  document.getElementById('activity-stats-btn').disabled = false;
 };
 
 document.getElementById('download-btn').onclick = function() {
@@ -819,15 +824,16 @@ const CA_FREIGHT_TABLE = [
   { min: 0.151, max: 0.25, usd: 3.23 },
   { min: 0.251, max: 0.5, usd: 3.59 },
   { min: 0.501, max: 0.75, usd: 3.59 },
-  { min: 0.751, max: 1, usd: 3.95 },
-  { min: 1.001, max: 1.5, usd: 5.02 },
-  { min: 1.501, max: 2, usd: 5.74 },
-  { min: 2.001, max: 2.5, usd: 6.46 },
-  { min: 2.501, max: 3, usd: 6.82 },
-  { min: 3.001, max: 3.5, usd: 7.18 },
-  { min: 3.501, max: 4, usd: 8.25 },
-  { min: 4.001, max: 4.5, usd: 8.97 },
-  { min: 4.501, max: 5, usd: 9.69 },
+  { min: 0.751, max: 1, usd: 3.59 }, // 修正为3.59
+  { min: 1.001, max: 1.5, usd: 3.95 }, // 修正为3.95
+  { min: 1.501, max: 2, usd: 5.02 },
+  { min: 2.001, max: 2.5, usd: 5.74 },
+  { min: 2.501, max: 3, usd: 6.46 },
+  { min: 3.001, max: 3.5, usd: 6.82 },
+  { min: 3.501, max: 4, usd: 7.18 },
+  { min: 4.001, max: 4.5, usd: 8.25 },
+  { min: 4.501, max: 5, usd: 8.97 },
+  { min: 5.001, max: 5.5, usd: 9.69 },
 ];
 function caFreightLookup(weight) {
   for (let row of CA_FREIGHT_TABLE) {
@@ -884,12 +890,13 @@ document.getElementById('merge-fee-ca-btn').onclick = async function() {
     const totalFreight = freight + firstLeg;
     // 运费合计 = 最新成本价 + 1 + 总运费
     const total = cost + 1 + totalFreight;
-    result.push([sku, total.toFixed(2)]);
+    result.push([sku, fixFreight3(total)]);
   }
   renderTable(result);
   mergedHeader = result[0];
   mergedData = result.slice(1);
   document.getElementById('download-btn').disabled = false;
+  document.getElementById('activity-stats-btn').disabled = false;
   document.getElementById('chart').style.display = 'none';
 };
 
@@ -991,14 +998,310 @@ document.getElementById('merge-fee-btn').onclick = async function() {
     const y2 = lookupTable(weight, Y2_TABLE);
     const y1Total = cost + 1 + (y1 ? weight * y1.freight + y1.handle : 0);
     const y2Total = cost + 1 + (y2 ? weight * y2.freight + y2.handle : 0);
-    result.push([sku, y1Total.toFixed(2), y2Total.toFixed(2)]);
+    result.push([sku, fixFreight3(y1Total), fixFreight3(y2Total)]);
   }
   renderTable(result);
   mergedHeader = result[0];
   mergedData = result.slice(1);
   document.getElementById('download-btn').disabled = false;
+  document.getElementById('activity-stats-btn').disabled = false;
   document.getElementById('chart').style.display = 'none';
 };
+
+document.getElementById('activity-stats-btn').onclick = function() {
+  // 先清空统计区域
+  document.getElementById('activity-stats-table').innerHTML = '';
+  document.getElementById('activity-stats-chart').style.display = 'none';
+  // 隐藏原始合并表格
+  document.getElementById('table-container').style.display = 'none';
+
+  if (currentMode === 'us') {
+    if (!mergedHeader.length || !mergedData.length) {
+      alert('请先合并表格！');
+      return;
+    }
+    // 字段索引
+    const idx = name => mergedHeader.indexOf(name);
+    // 只统计有SPU ID的行
+    const rows = mergedData.filter(row => row[idx('SPU ID')]);
+    if (!rows.length) {
+      document.getElementById('activity-stats-table').innerHTML = '<div class="alert alert-warning">没有可统计的数据，请检查合并表格内容！</div>';
+      return;
+    }
+    // 按SPU分组
+    const spuMap = {};
+    for (const row of rows) {
+      const spu = row[idx('SPU ID')];
+      if (!spuMap[spu]) spuMap[spu] = [];
+      spuMap[spu].push(row);
+    }
+    // 统计表头
+    const outHeader = [
+      '账号', 'SPU ID', '物流时效', 'SKU', 'Y1费用合计', 'Y2费用合计',
+      '0.75售价(RMB)', 'Y1毛利率(0.75)', '是否报活动(0.75,Y1)', 'Y2毛利率(0.75)', '是否报活动(0.75,Y2)',
+      '0.85售价(RMB)', 'Y1毛利率(0.85)', '是否报活动(0.85,Y1)', 'Y2毛利率(0.85)', '是否报活动(0.85,Y2)',
+      '0.9售价(RMB)', 'Y1毛利率(0.9)', '是否报活动(0.9,Y1)', 'Y2毛利率(0.9)', '是否报活动(0.9,Y2)'
+    ];
+    const outRows = [outHeader];
+    // 每个SPU下，按Y1/Y2分别排序
+    for (const spu in spuMap) {
+      // Y1
+      const y1Rows = [...spuMap[spu]].sort((a, b) => parseFloat(b[idx('Y1费用合计')]) - parseFloat(a[idx('Y1费用合计')]));
+      for (const row of y1Rows) {
+        outRows.push([
+          row[idx('账号')],
+          row[idx('SPU ID')],
+          row[idx('物流时效')], // 自动取合并表格的物流时效
+          row[idx('SKU')],
+          row[idx('Y1费用合计')],
+          row[idx('Y2费用合计')],
+          row[idx('0.75售价(RMB)')], row[idx('Y1毛利率(0.75)')], row[idx('是否报活动(0.75,Y1)')], row[idx('Y2毛利率(0.75)')], row[idx('是否报活动(0.75,Y2)')],
+          row[idx('0.85售价(RMB)')], row[idx('Y1毛利率(0.85)')], row[idx('是否报活动(0.85,Y1)')], row[idx('Y2毛利率(0.85)')], row[idx('是否报活动(0.85,Y2)')],
+          row[idx('0.9售价(RMB)')], row[idx('Y1毛利率(0.9)')], row[idx('是否报活动(0.9,Y1)')], row[idx('Y2毛利率(0.9)')], row[idx('是否报活动(0.9,Y2)')]
+        ]);
+      }
+      // Y2
+      const y2Rows = [...spuMap[spu]].sort((a, b) => parseFloat(b[idx('Y2费用合计')]) - parseFloat(a[idx('Y2费用合计')]));
+      for (const row of y2Rows) {
+        outRows.push([
+          row[idx('账号')],
+          row[idx('SPU ID')],
+          row[idx('物流时效')], // 自动取合并表格的物流时效
+          row[idx('SKU')],
+          row[idx('Y1费用合计')],
+          row[idx('Y2费用合计')],
+          row[idx('0.75售价(RMB)')], row[idx('Y1毛利率(0.75)')], row[idx('是否报活动(0.75,Y1)')], row[idx('Y2毛利率(0.75)')], row[idx('是否报活动(0.75,Y2)')],
+          row[idx('0.85售价(RMB)')], row[idx('Y1毛利率(0.85)')], row[idx('是否报活动(0.85,Y1)')], row[idx('Y2毛利率(0.85)')], row[idx('是否报活动(0.85,Y2)')],
+          row[idx('0.9售价(RMB)')], row[idx('Y1毛利率(0.9)')], row[idx('是否报活动(0.9,Y1)')], row[idx('Y2毛利率(0.9)')], row[idx('是否报活动(0.9,Y2)')]
+        ]);
+      }
+    }
+    // 分页逻辑
+    let currentPage = 1;
+    const pageSize = 25;
+    function renderStatsTablePage() {
+      const start = (currentPage - 1) * pageSize + 1;
+      const end = Math.min(start + pageSize - 1, outRows.length - 1);
+      let html = '<div style="overflow-x:auto;"><table class="table table-bordered table-hover align-middle text-center">';
+      html += '<thead><tr>' + outHeader.map(x => `<th class="text-center align-middle">${x}</th>`).join('') + '</tr></thead>';
+      html += '<tbody>';
+      for (let i = start; i <= end; i++) {
+        html += '<tr>' + outRows[i].map(x => `<td class="text-center align-middle">${x}</td>`).join('') + '</tr>';
+      }
+      html += '</tbody></table></div>';
+      // 分页控件
+      const totalPages = Math.ceil((outRows.length - 1) / pageSize);
+      html += `<nav><ul class="pagination pagination-sm">`;
+      for (let i = 1; i <= totalPages; i++) {
+        html += `<li class="page-item${i===currentPage?' active':''}"><a class="page-link" href="#" onclick="window.gotoStatsPage(${i});return false;">${i}</a></li>`;
+      }
+      html += '</ul></nav>';
+      document.getElementById('activity-stats-table').innerHTML = html;
+      // 下载按钮
+      const downloadBtn = document.createElement('button');
+      downloadBtn.className = 'btn btn-success my-2';
+      downloadBtn.textContent = '下载统计结果Excel';
+      downloadBtn.onclick = function() {
+        const ws = XLSX.utils.aoa_to_sheet(outRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '美站核价活动统计');
+        XLSX.writeFile(wb, '美站核价活动统计.xlsx');
+      };
+      document.getElementById('activity-stats-table').prepend(downloadBtn);
+    }
+    window.gotoStatsPage = function(page) {
+      currentPage = page;
+      renderStatsTablePage();
+    };
+    // 数据透视图统计
+    const chartData = {};
+    for (const spu in spuMap) {
+      chartData[spu] = { 'Y1_0.75':0, 'Y1_0.85':0, 'Y1_0.9':0, 'Y2_0.75':0, 'Y2_0.85':0, 'Y2_0.9':0 };
+      for (const row of spuMap[spu]) {
+        if (row[idx('是否报活动(0.75,Y1)')] === 'Y') chartData[spu]['Y1_0.75']++;
+        if (row[idx('是否报活动(0.85,Y1)')] === 'Y') chartData[spu]['Y1_0.85']++;
+        if (row[idx('是否报活动(0.9,Y1)')] === 'Y') chartData[spu]['Y1_0.9']++;
+        if (row[idx('是否报活动(0.75,Y2)')] === 'Y') chartData[spu]['Y2_0.75']++;
+        if (row[idx('是否报活动(0.85,Y2)')] === 'Y') chartData[spu]['Y2_0.85']++;
+        if (row[idx('是否报活动(0.9,Y2)')] === 'Y') chartData[spu]['Y2_0.9']++;
+      }
+    }
+    // 生成ECharts数据
+    const spuList = Object.keys(chartData);
+    const legend = ['Y1_0.75','Y1_0.85','Y1_0.9','Y2_0.75','Y2_0.85','Y2_0.9'];
+    const series = legend.map(lg => ({
+      name: lg,
+      type: 'bar',
+      stack: 'total',
+      emphasis: { focus: 'series' },
+      data: spuList.map(spu => chartData[spu][lg])
+    }));
+    const option = {
+      title: { text: '各SPU下各售价/物流时效可报活动SKU数量', left: 'center', top: 10, textStyle: { fontWeight: 'bold', fontSize: 18 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      legend: { data: legend, top: 40 },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: { type: 'category', data: spuList },
+      yAxis: { type: 'value' },
+      series: series
+    };
+    const chartDom = document.getElementById('activity-stats-chart');
+    chartDom.style.display = '';
+    const myChart = echarts.init(chartDom);
+    myChart.setOption(option);
+    // 先渲染图表再渲染表格
+    renderStatsTablePage();
+    return;
+  }
+  if (currentMode === 'ca') {
+    if (!mergedHeader.length || !mergedData.length) {
+      alert('请先合并表格！');
+      return;
+    }
+    // 字段索引
+    const idx = name => mergedHeader.indexOf(name);
+    // 只统计有SPU ID的行
+    const rows = mergedData.filter(row => row[idx('SPU ID')]);
+    if (!rows.length) {
+      document.getElementById('activity-stats-table').innerHTML = '<div class="alert alert-warning">没有可统计的数据，请检查合并表格内容！</div>';
+      return;
+    }
+    // 统计表头
+    const outHeader = [
+      '账号', 'SPU ID', 'SKU', '费用合计',
+      '0.75售价(RMB)', '毛利率(0.75)', '是否报活动(0.75)',
+      '0.85售价(RMB)', '毛利率(0.85)', '是否报活动(0.85)',
+      '0.9售价(RMB)', '毛利率(0.9)', '是否报活动(0.9)'
+    ];
+    const outRows = [outHeader];
+    for (const row of rows) {
+      outRows.push([
+        row[idx('账号')],
+        row[idx('SPU ID')],
+        row[idx('SKU')],
+        row[idx('费用合计')],
+        row[idx('0.75售价(RMB)')], row[idx('毛利率(0.75)')], row[idx('是否报活动(0.75)')],
+        row[idx('0.85售价(RMB)')], row[idx('毛利率(0.85)')], row[idx('是否报活动(0.85)')],
+        row[idx('0.9售价(RMB)')], row[idx('毛利率(0.9)')], row[idx('是否报活动(0.9)')]
+      ]);
+    }
+    // 分页逻辑
+    let currentPage = 1;
+    const pageSize = 25;
+    function renderStatsTablePage() {
+      const start = (currentPage - 1) * pageSize + 1;
+      const end = Math.min(start + pageSize - 1, outRows.length - 1);
+      let html = '<div style="overflow-x:auto;"><table class="table table-bordered table-hover align-middle text-center">';
+      html += '<thead><tr>' + outHeader.map(x => `<th class="text-center align-middle">${x}</th>`).join('') + '</tr></thead>';
+      html += '<tbody>';
+      for (let i = start; i <= end; i++) {
+        html += '<tr>' + outRows[i].map(x => `<td class="text-center align-middle">${x}</td>`).join('') + '</tr>';
+      }
+      html += '</tbody></table></div>';
+      // 分页控件
+      const totalPages = Math.ceil((outRows.length - 1) / pageSize);
+      html += `<nav><ul class="pagination pagination-sm">`;
+      for (let i = 1; i <= totalPages; i++) {
+        html += `<li class="page-item${i===currentPage?' active':''}"><a class="page-link" href="#" onclick="window.gotoStatsPage(${i});return false;">${i}</a></li>`;
+      }
+      html += '</ul></nav>';
+      document.getElementById('activity-stats-table').innerHTML = html;
+      // 下载按钮
+      const downloadBtn = document.createElement('button');
+      downloadBtn.className = 'btn btn-success my-2';
+      downloadBtn.textContent = '下载统计结果Excel';
+      downloadBtn.onclick = function() {
+        const ws = XLSX.utils.aoa_to_sheet(outRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '加站核价活动统计');
+        XLSX.writeFile(wb, '加站核价活动统计.xlsx');
+      };
+      document.getElementById('activity-stats-table').prepend(downloadBtn);
+    }
+    window.gotoStatsPage = function(page) {
+      currentPage = page;
+      renderStatsTablePage();
+    };
+    // 图表统计
+    // 统计各售价下是否报活动=Y的SKU数量
+    const stat = [
+      { name: '0.75售价可报活动', value: 0 },
+      { name: '0.85售价可报活动', value: 0 },
+      { name: '0.9售价可报活动', value: 0 }
+    ];
+    rows.forEach(row => {
+      if (row[idx('是否报活动(0.75)')] === 'Y') stat[0].value++;
+      if (row[idx('是否报活动(0.85)')] === 'Y') stat[1].value++;
+      if (row[idx('是否报活动(0.9)')] === 'Y') stat[2].value++;
+    });
+    const chartDom = document.getElementById('activity-stats-chart');
+    chartDom.style.display = '';
+    const myChart = echarts.init(chartDom);
+    const option = {
+      title: {
+        text: '各售价下可报活动SKU数量（加站核价）',
+        left: 'center',
+        top: 10,
+        textStyle: { fontWeight: 'bold', fontSize: 18 }
+      },
+      tooltip: { trigger: 'item', formatter: '{b}<br/>数量: {c} ({d}%)' },
+      legend: { orient: 'horizontal', bottom: 0, left: 'center', textStyle: { fontSize: 14 } },
+      color: ['#5470C6', '#FAC858', '#91CC75'],
+      series: [{
+        name: '可报活动SKU数量',
+        type: 'pie',
+        radius: ['40%', '70%'],
+        avoidLabelOverlap: false,
+        itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
+        label: {
+          show: true,
+          position: 'outside',
+          formatter: '{b}\n{c}个 ({d}%)',
+          fontSize: 14
+        },
+        emphasis: {
+          label: { show: true, fontSize: 18, fontWeight: 'bold', color: '#333' },
+          itemStyle: { shadowBlur: 20, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.3)' }
+        },
+        labelLine: { show: true, length: 20, length2: 20 },
+        data: stat
+      }]
+    };
+    myChart.setOption(option);
+    // 先渲染图表再渲染表格
+    renderStatsTablePage();
+    return;
+  }
+};
+
+// 保留小数点后三位（直接截断，不四舍五入）
+function cut3(val) {
+  if (val === '' || val === undefined || val === null) return val;
+  let num = Number(val);
+  if (isNaN(num)) return val;
+  return (Math.trunc(num * 1000) / 1000).toFixed(3);
+}
+
+// 美站核价统计表格输出时，数值型字段保留3位小数（截断）
+function fix3(val) {
+  if (val === '' || val === undefined || val === null) return val;
+  let num = Number(val);
+  return isNaN(num) ? val : cut3(num);
+}
+
+// 加站核价统计表格输出时，数值型字段保留3位小数（截断）
+function fix3ca(val) {
+  if (val === '' || val === undefined || val === null) return val;
+  let num = Number(val);
+  return isNaN(num) ? val : cut3(num);
+}
+
+// 运费合并和加站运费合并数值型字段保留3位小数（截断）
+function fixFreight3(val) {
+  if (val === '' || val === undefined || val === null) return val;
+  let num = Number(val);
+  return isNaN(num) ? val : cut3(num);
+}
 </script>
 </body>
 </html> 
